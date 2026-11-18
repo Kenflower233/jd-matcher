@@ -16,6 +16,14 @@ def test_normalize_keeps_order():
     assert normalize_skills(["B", "A", "C"]) == ["b", "a", "c"]
 
 
+def test_normalize_known_aliases():
+    assert normalize_skills(["sklearn", "Scikit Learn", "Microsoft Excel", "数据清理"]) == [
+        "scikit-learn",
+        "excel",
+        "数据清洗",
+    ]
+
+
 def test_compute_gap_intersection_and_difference():
     gap = compute_gap(["Python", "SQL", "Spark"], ["python", "Excel"])
     assert gap.matched == ["python"]
@@ -47,6 +55,13 @@ def test_extract_skills_bad_format_rejected():
     client = _mock_client([json.dumps({"skills": "Python"})])
     with pytest.raises(AnalysisError, match="格式错误"):
         extract_skills("text", "JD", client)
+
+
+def test_extract_skills_empty_source_rejected_without_api_call():
+    client = MagicMock()
+    with pytest.raises(AnalysisError, match="不能为空"):
+        extract_skills("  ", "JD", client)
+    client.chat.assert_not_called()
 
 
 def test_analyze_skill_gap_calls_llm_twice():

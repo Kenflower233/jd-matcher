@@ -2,6 +2,7 @@
 
 设计原则：匹配结论由可解释的集合运算得出，LLM只负责抽取，不直接判定匹配。
 """
+import re
 from dataclasses import dataclass
 
 from .analyzer import AnalysisError, _parse_json
@@ -18,12 +19,31 @@ class SkillGap:
     missing: list[str]   # 差集：JD要求但简历缺失
 
 
+SKILL_ALIASES = {
+    "microsoft excel": "excel",
+    "ms excel": "excel",
+    "powerbi": "power bi",
+    "scikit learn": "scikit-learn",
+    "sklearn": "scikit-learn",
+    "structured query language": "sql",
+    "数据清理": "数据清洗",
+    "可视化": "数据可视化",
+    "数据可视化分析": "数据可视化",
+}
+
+
+def normalize_skill_name(skill: str) -> str:
+    """统一空白、大小写及少量明确同义写法。"""
+    key = re.sub(r"\s+", " ", skill.strip().lower())
+    return SKILL_ALIASES.get(key, key)
+
+
 def normalize_skills(skills: list[str]) -> list[str]:
     """归一化：去空白、转小写、去重，保持首次出现顺序。"""
     seen: set[str] = set()
     result: list[str] = []
     for s in skills:
-        key = s.strip().lower()
+        key = normalize_skill_name(s)
         if key and key not in seen:
             seen.add(key)
             result.append(key)
@@ -46,6 +66,8 @@ def compute_gap(jd_skills: list[str], resume_skills: list[str]) -> SkillGap:
 
 def extract_skills(text: str, source: str, client: LLMClient) -> list[str]:
     """调用LLM从文本中抽取技能列表。"""
+    if not text.strip():
+        raise AnalysisError(f"{source}内容不能为空")
     try:
         raw = client.chat(SKILL_EXTRACTION_SYSTEM, build_skill_prompt(text, source))
     except LLMError as e:

@@ -20,6 +20,17 @@ def test_parse_docx(tmp_path):
     assert "五年Python经验" in parse_file(f)
 
 
+def test_parse_docx_includes_tables(tmp_path):
+    f = tmp_path / "resume.docx"
+    doc = docx.Document()
+    table = doc.add_table(rows=1, cols=2)
+    table.cell(0, 0).text = "技能"
+    table.cell(0, 1).text = "Python"
+    doc.save(f)
+    parsed = parse_file(f)
+    assert "技能" in parsed and "Python" in parsed
+
+
 def test_parse_pdf(tmp_path):
     f = tmp_path / "resume.pdf"
     doc = fitz.open()
@@ -42,3 +53,14 @@ def test_empty_file_rejected(tmp_path):
     f.write_text("   ", encoding="utf-8")
     with pytest.raises(FileParseError, match="未能从文件中提取到文字"):
         parse_file(f)
+
+
+def test_gb18030_text_is_supported(tmp_path):
+    f = tmp_path / "resume.txt"
+    f.write_bytes("中文简历".encode("gb18030"))
+    assert parse_file(f) == "中文简历"
+
+
+def test_missing_file_has_friendly_error(tmp_path):
+    with pytest.raises(FileParseError, match="不存在"):
+        parse_file(tmp_path / "missing.txt")

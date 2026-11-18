@@ -1,0 +1,12 @@
+{
+  "verified_at": "2026-11-16",
+  "schema_success_rate": 1.0,
+  "scores": {
+    "finance_match": 84,
+    "finance_mismatch": 10,
+    "software_match": 90,
+    "software_mismatch": 0,
+    "marketing_match": 91,
+    "marketing_mismatch": 5
+  }
+}

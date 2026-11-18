@@ -1,0 +1,6 @@
+{"id":"finance_match","industry":"金融数据","group":"matched","jd":"数据分析实习生：要求熟练使用Python和SQL，能够使用Excel完成数据分析和可视化，有统计学基础。","resume":"统计学本科生。使用Python、SQL和Excel分析公开金融数据，使用Matplotlib制作可视化报告，完成过回归分析课程项目。"}
+{"id":"finance_mismatch","industry":"金融数据","group":"unmatched","jd":"数据分析实习生：要求熟练使用Python和SQL，能够使用Excel完成数据分析和可视化，有统计学基础。","resume":"视觉传达专业，熟悉Photoshop和Illustrator，完成过品牌海报与包装设计项目。"}
+{"id":"software_match","industry":"软件开发","group":"matched","jd":"Java后端实习生：要求掌握Java、Spring Boot和MySQL，了解REST API和Git，有后端项目经验。","resume":"计算机本科生，使用Java、Spring Boot和MySQL开发课程管理系统，编写REST API并使用Git协作。"}
+{"id":"software_mismatch","industry":"软件开发","group":"unmatched","jd":"Java后端实习生：要求掌握Java、Spring Boot和MySQL，了解REST API和Git，有后端项目经验。","resume":"市场营销专业，运营校园公众号，负责活动策划、文案撰写和用户调研。"}
+{"id":"marketing_match","industry":"数字营销","group":"matched","jd":"数字营销实习生：要求了解SEO、内容运营和数据分析，能够使用Excel，有社交媒体运营经验。","resume":"运营校园社交媒体账号，负责内容策划与SEO优化，使用Excel分析阅读和转化数据并调整选题。"}
+{"id":"marketing_mismatch","industry":"数字营销","group":"unmatched","jd":"数字营销实习生：要求了解SEO、内容运营和数据分析，能够使用Excel，有社交媒体运营经验。","resume":"机械工程本科生，使用SolidWorks完成零件建模，参与机械结构设计与加工实训。"}

@@ -4,16 +4,42 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.analyzer import AnalysisError, _parse_json, analyze
+from src.analyzer import (
+    AnalysisError,
+    _parse_json,
+    analyze,
+    compute_requirement_score,
+    compute_score,
+)
 from src.llm_client import LLMError
 
 JD = "要求：熟悉Python，了解数据分析，有SQL经验"
 RESUME = "3年Python开发经验，做过数据分析项目"
 
 GOOD_LLM_RESPONSE = json.dumps({
-    "score": 80,
-    "matched": ["JD要求Python，简历有3年经验"],
-    "missing": ["JD要求有SQL经验"],
+    "dimensions": {
+        "skills": {"score": 70, "applicable": True, "reason": "Python匹配，SQL缺失"},
+        "experience": {"score": 80, "applicable": True, "reason": "有相关项目"},
+        "education": {"score": 0, "applicable": False, "reason": "JD未要求学历"},
+    },
+    "requirements": [
+        {
+            "requirement": "熟悉Python",
+            "category": "skill",
+            "importance": "required",
+            "status": "matched",
+            "jd_evidence": "熟悉Python",
+            "resume_evidence": "3年Python开发经验",
+        },
+        {
+            "requirement": "有SQL经验",
+            "category": "skill",
+            "importance": "required",
+            "status": "missing",
+            "jd_evidence": "有SQL经验",
+            "resume_evidence": None,
+        },
+    ],
     "suggestions": ["补充SQL", "量化成果", "突出项目"],
 }, ensure_ascii=False)
 
@@ -33,6 +59,21 @@ def test_parse_json_in_markdown_block():
     assert _parse_json(text) == {"score": 80}
 
 
+def test_parse_json_ignores_trailing_explanation():
+    text = '{"score": 80}\n分析完成。'
+    assert _parse_json(text) == {"score": 80}
+
+
+def test_parse_json_ignores_leading_explanation():
+    text = '以下是结果：\n{"score": 80}'
+    assert _parse_json(text) == {"score": 80}
+
+
+def test_parse_json_uses_first_complete_object():
+    text = '{"score": 80}\n{"score": 60}'
+    assert _parse_json(text) == {"score": 80}
+
+
 def test_parse_invalid_json_raises():
     with pytest.raises(AnalysisError, match="合法JSON"):
         _parse_json("这不是JSON")
@@ -40,8 +81,53 @@ def test_parse_invalid_json_raises():
 
 def test_analyze_success():
     result = analyze(JD, RESUME, _mock_client(GOOD_LLM_RESPONSE))
-    assert result.score == 80
+    assert result.score == 74
+    assert result.score_breakdown["education"] is None
+    assert len(result.requirements) == 2
+    assert result.missing == ["有SQL经验"]
     assert len(result.suggestions) == 3
+
+
+def test_analyze_accepts_valid_json_with_trailing_model_text():
+    response = GOOD_LLM_RESPONSE + "\n分析完成，请核对结果。"
+    result = analyze(JD, RESUME, _mock_client(response))
+    assert result.score == 74
+    assert result.missing == ["有SQL经验"]
+
+
+def test_compute_score_renormalizes_inapplicable_dimensions():
+    dimensions = {
+        "skills": {"score": 100, "applicable": True},
+        "experience": {"score": 0, "applicable": True},
+        "education": {"score": 100, "applicable": False},
+    }
+    assert compute_score(dimensions) == 63
+
+
+def test_compute_score_rejects_no_applicable_dimensions():
+    dimensions = {
+        name: {"score": 0, "applicable": False}
+        for name in ("skills", "experience", "education")
+    }
+    with pytest.raises(AnalysisError, match="评分维度"):
+        compute_score(dimensions)
+
+
+def test_compute_requirement_score_uses_status_and_importance():
+    requirements = [
+        {"category": "skill", "importance": "required", "status": "matched"},
+        {"category": "skill", "importance": "preferred", "status": "partial"},
+        {"category": "experience", "importance": "required", "status": "missing"},
+    ]
+    assert compute_requirement_score(requirements) == 50
+
+
+def test_compute_requirement_score_full_match_is_100():
+    requirements = [
+        {"category": "skill", "importance": "required", "status": "matched"},
+        {"category": "other", "importance": "bonus", "status": "matched"},
+    ]
+    assert compute_requirement_score(requirements) == 100
 
 
 def test_analyze_empty_input_rejected():
@@ -64,16 +150,26 @@ def test_analyze_invalid_llm_json_rejected():
 
 
 def test_analyze_schema_violation_rejected():
-    bad = json.dumps({"score": 150, "matched": [], "missing": [], "suggestions": []})
+    bad = json.dumps({"dimensions": {}, "requirements": [], "suggestions": []})
     with pytest.raises(AnalysisError, match="格式校验"):
         analyze(JD, RESUME, _mock_client(bad))
 
 
 def test_analyze_grounding_warning_kept():
     response = json.dumps({
-        "score": 60,
-        "matched": ["Python经验"],
-        "missing": ["JD要求精通CUDA"],
+        "dimensions": {
+            "skills": {"score": 60, "applicable": True, "reason": "部分匹配"},
+            "experience": {"score": 0, "applicable": False, "reason": "未要求"},
+            "education": {"score": 0, "applicable": False, "reason": "未要求"},
+        },
+        "requirements": [{
+            "requirement": "精通CUDA",
+            "category": "skill",
+            "importance": "required",
+            "status": "missing",
+            "jd_evidence": "精通CUDA",
+            "resume_evidence": None,
+        }],
         "suggestions": ["a", "b", "c"],
     }, ensure_ascii=False)
     result = analyze(JD, RESUME, _mock_client(response))

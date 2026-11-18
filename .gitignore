@@ -12,3 +12,6 @@ venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+
+# Local analysis history (contains summaries, never commit user activity)
+data/
